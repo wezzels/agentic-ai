@@ -1,0 +1,135 @@
+version: '3.8'
+
+services:
+  # Agentic AI Application
+  app:
+    image: docker.io/library/python:3.11-slim
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-SecureP@ssw0rd!}@postgres:5432/agentic_ai
+      - LOG_LEVEL=INFO
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - JWT_EXPIRY=3600
+    ports:
+      - "8000:8000"
+    volumes:
+      - app_data:/app/data:Z
+      - ./logs:/app/logs:Z
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - agentic-ai
+
+  # Dashboard Frontend
+  dashboard:
+    image: docker.io/library/node:18-alpine
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      - VITE_API_URL=http://app:8000
+    ports:
+      - "3000:80"
+    depends_on:
+      - app
+    networks:
+      - agentic-ai
+
+  # Redis - Message Bus & Cache
+  redis:
+    image: docker.io/library/redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data:Z
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - agentic-ai
+
+  # PostgreSQL - Primary Database
+  postgres:
+    image: docker.io/library/postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=agentic_ai
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-SecureP@ssw0rd!}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data:Z
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql:Z
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agentic_ai"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - agentic-ai
+
+  # Prometheus - Metrics Collection
+  prometheus:
+    image: docker.io/prom/prometheus:latest
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:Z
+      - prometheus_data:/prometheus:Z
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+    ports:
+      - "9090:9090"
+    depends_on:
+      - app
+    networks:
+      - agentic-ai
+
+  # Grafana - Dashboards
+  grafana:
+    image: docker.io/grafana/grafana:latest
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana:Z
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:Z
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:Z
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - agentic-ai
+
+volumes:
+  app_data:
+  redis_data:
+  postgres_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  agentic-ai:
+    driver: bridge
