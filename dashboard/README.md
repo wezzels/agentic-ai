@@ -1,147 +1,103 @@
 # Agentic AI Dashboard
 
-**Real-time monitoring and management dashboard for Agentic AI system.**
-
----
+Real-time web dashboard for monitoring Agentic AI agents, experiments, and workflows.
 
 ## Features
 
-- 📊 **Agent Status Overview** - Real-time status of all 10 agents
-- 🔐 **Security Monitoring** - Live threat detection, incidents, vulnerabilities
-- 🚀 **DevOps Dashboard** - Deployments, pipelines, infrastructure, alerts
-- 📈 **Data Analytics** - Dataset statistics, trends, anomalies
-- 🎫 **Support Tickets** - Ticket queue, SLA tracking, satisfaction scores
-- 🤖 **Agent Orchestration** - Lead Agent task delegation and workflows
-
----
-
-## Quick Start
-
-### Option 1: Development Server
-
-```bash
-cd dashboard
-npm install
-npm run dev
-```
-
-Open http://localhost:3000
-
-### Option 2: Production Build
-
-```bash
-npm run build
-npm run preview
-```
-
----
-
-## API Endpoints
-
-The dashboard connects to the Agentic AI API:
-
-```
-GET  /api/v1/status          # System status
-GET  /api/v1/agents          # List all agents
-GET  /api/v1/security/state  # Security agent state
-GET  /api/v1/devops/state    # DevOps agent state
-GET  /api/v1/data/state      # Data analyst state
-GET  /api/v1/support/state   # Support agent state
-```
-
----
-
-## Components
-
-### Security Dashboard
-- Real-time threat detection
-- Incident timeline
-- Vulnerability scanner results
-- Secrets rotation status
-- Compliance metrics
-
-### DevOps Dashboard
-- Active deployments
-- Pipeline status
-- Infrastructure resources
-- Cost tracking
-- Monitoring alerts
-
-### Data Analytics Dashboard
-- Dataset overview
-- Statistical analysis
-- Trend detection
-- Anomaly alerts
-- Generated reports
-
-### Support Dashboard
-- Ticket queue
-- SLA compliance
-- Satisfaction scores
-- Knowledge base stats
-- Auto-response tracking
-
----
-
-## Configuration
-
-Create `.env.local`:
-
-```env
-VITE_API_URL=http://localhost:5000
-VITE_REFRESH_INTERVAL=30000
-VITE_THEME=dark
-```
-
----
+- **Agent Overview**: Status, health, and activity across all 33+ agents
+- **Chaos Monkey Dashboard**: Real-time experiment tracking, resiliency scores
+- **Vendor Risk Dashboard**: Vendor tiers, assessments, findings heatmap
+- **Audit Dashboard**: Control effectiveness, evidence tracking, findings
+- **Cloud Security Dashboard**: Compliance scores, findings, policy violations
+- **ML Ops Dashboard**: Model registry, experiment tracking, drift alerts
 
 ## Tech Stack
 
-- **Frontend:** React 18 + Vite
-- **UI:** Tailwind CSS + shadcn/ui
-- **Charts:** Recharts
-- **State:** Zustand
-- **HTTP:** Axios
+- **Frontend**: React 18 + TypeScript
+- **Styling**: Tailwind CSS
+- **Charts**: Recharts
+- **State**: React Context + Hooks
+- **API**: REST (Python backend)
 
----
-
-## Development
+## Quick Start
 
 ```bash
 # Install dependencies
 npm install
 
-# Start dev server
+# Start development server
 npm run dev
 
 # Build for production
 npm run build
-
-# Preview production build
-npm run preview
-
-# Run linter
-npm run lint
 ```
 
----
+## Dashboard Views
+
+### 1. Overview Dashboard
+- Agent health status
+- Recent activity feed
+- Quick stats across all agents
+
+### 2. Chaos Monkey
+- Experiment list with status badges
+- Real-time experiment view
+- Target management
+- Resiliency score charts
+- Safety constraints config
+
+### 3. Vendor Risk
+- Vendor tier breakdown (pie chart)
+- Assessment status timeline
+- Finding severity heatmap
+- Alert timeline
+- Continuous monitoring status
+
+### 4. Audit
+- Audit engagement status
+- Control effectiveness (bar chart)
+- Finding tracking by severity
+- Evidence browser
+- Workpaper status
+
+### 5. Cloud Security
+- Account inventory by cloud provider
+- Finding summary (donut chart)
+- Compliance score trends
+- Policy violation list
+
+### 6. ML Ops
+- Model registry table
+- Experiment tracking
+- Deployment status
+- Drift detection alerts
+
+## API Integration
+
+The dashboard connects to the Agentic AI Python backend via REST API.
+
+```python
+# Backend server (to be implemented)
+python -m agentic_ai.server --host 0.0.0.0 --port 8000
+```
 
 ## Screenshots
 
-### Overview Dashboard
-Shows all agents, system health, and key metrics.
+See `/dashboard/screenshots/` for mockups.
 
-### Security Dashboard  
-Real-time threat detection, incident management, vulnerability scanning.
+## Development
 
-### DevOps Dashboard
-Deployments, CI/CD pipelines, infrastructure monitoring.
+```bash
+# Run tests
+npm test
 
-### Support Dashboard
-Ticket management, SLA tracking, customer satisfaction.
+# Lint code
+npm run lint
 
----
+# Type check
+npm run typecheck
+```
 
 ## License
 
-MIT
+Apache 2.0
