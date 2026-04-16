@@ -85,8 +85,8 @@ class RetentionPolicy:
     name: str
     data_types: List[DataType]
     retention_period: int  # days
-    retention_unit: str = "days"  # days, months, years
     action: RetentionAction
+    retention_unit: str = "days"  # days, months, years
     legal_hold: bool = False
     regulatory_requirement: str = ""
     exceptions: List[str] = field(default_factory=list)
@@ -141,13 +141,14 @@ class QualityIssue:
 
 
 @dataclass
+@dataclass
 class AccessRequest:
     """Data access request."""
     request_id: str
     asset_id: str
     requester: str
     purpose: str
-    access_level: str  # read, write, admin
+    access_level: str
     status: str = "pending"  # pending, approved, denied, revoked
     approved_by: Optional[str] = None
     approved_at: Optional[datetime] = None

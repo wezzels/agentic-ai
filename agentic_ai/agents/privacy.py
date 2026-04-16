@@ -111,9 +111,9 @@ class DataSubjectRequest:
     right_type: DataSubjectRight
     status: RequestStatus
     submitted_at: datetime
+    deadline: datetime
     verified_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
-    deadline: datetime
     response_data: Optional[Dict[str, Any]] = None
     denial_reason: Optional[str] = None
     assigned_to: Optional[str] = None

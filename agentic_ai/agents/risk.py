@@ -110,9 +110,9 @@ class KeyRiskIndicator:
     kri_id: str
     name: str
     description: str
-    risk_id: Optional[str] = None
     category: RiskCategory
     metric_type: str  # percentage, count, ratio, score
+    risk_id: Optional[str] = None
     current_value: float = 0.0
     threshold_green: float = 0.0  # Acceptable
     threshold_yellow: float = 0.0  # Warning
@@ -130,8 +130,8 @@ class RiskAssessment:
     assessment_id: str
     name: str
     scope: str
-    status: str  # planned, in_progress, completed
     start_date: datetime
+    status: str  # planned, in_progress, completed
     end_date: Optional[datetime] = None
     risks_identified: int = 0
     high_risks: int = 0

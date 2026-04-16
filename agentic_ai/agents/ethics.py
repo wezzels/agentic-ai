@@ -577,7 +577,6 @@ class EthicsAgent:
     # Incident Management
     # ============================================
     
-    report_ethical_incident
     def report_incident(
         self,
         title: str,

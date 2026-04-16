@@ -126,10 +126,10 @@ class Finding:
     title: str
     description: str
     severity: RiskLevel
+    status: str  # open, in_progress, resolved, accepted
     regulation_id: Optional[str] = None
     control_id: Optional[str] = None
     audit_id: Optional[str] = None
-    status: str  # open, in_progress, resolved, accepted
     remediation_plan: str = ""
     due_date: Optional[datetime] = None
     resolved_date: Optional[datetime] = None
