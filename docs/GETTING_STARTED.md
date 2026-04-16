@@ -1,99 +1,35 @@
 # Getting Started with Agentic AI
 
-**Version:** 0.7.0  
-**Time to First Run:** 5 minutes
-
----
+Quick start guide for setting up and using Agentic AI.
 
 ## Prerequisites
 
-- Python 3.12+
-- Docker & Docker Compose (for full stack)
-- Git
+- Python 3.10+
+- Redis 6.0+
+- SQLite 3.35+
+- (Optional) PostgreSQL 14+
+- (Optional) Docker & Docker Compose
 
----
+## Installation
 
-## Step 1: Clone & Setup
+### Quick Install
 
 ```bash
 # Clone repository
-git clone https://idm.wezzel.com/crab-meat-repos/agentic-ai.git
+git clone https://github.com/wezzels/agentic-ai.git
 cd agentic-ai
 
 # Create virtual environment
 python -m venv venv
 source venv/bin/activate  # Linux/macOS
-# or: venv\Scripts\activate  # Windows
+# or
+venv\Scripts\activate  # Windows
 
 # Install dependencies
 pip install -r requirements.txt
 ```
 
----
-
-## Step 2: Quick Test
-
-```bash
-# Run tests to verify setup
-pytest tests/ -v --tb=short
-
-# Expected: 383 tests passing
-```
-
----
-
-## Step 3: Run Examples
-
-### Example 1: Multi-Agent Collaboration
-
-```bash
-python examples/multi_agent_collaboration.py
-```
-
-**What it does:**
-- Creates a shared workspace
-- 3 agents edit a document simultaneously
-- Demonstrates conflict resolution
-- Shows presence tracking
-
-**Expected output:**
-```
-==============================================================
-Multi-Agent Collaborative Document Editing
-==============================================================
-
-Created document: Project README (ID: ws-xxx)
-
-[developer] Starting to edit document...
-[reviewer] Starting to edit document...
-[tech-writer] Starting to edit document...
-
-[developer] Submitted operation (version 1)
-[reviewer] Submitted operation (version 2)
-[tech-writer] Submitted operation (version 3)
-
-==============================================================
-Results:
-==============================================================
-Final document version: 3
-Active users: 3
-```
-
-### Example 2: Session Management
-
-```bash
-python examples/session_management.py
-```
-
-**What it does:**
-- Creates a collaboration session
-- 4 participants join with different roles
-- Demonstrates role changes and invites
-- Shows activity tracking
-
----
-
-## Step 4: Run Full Stack (Docker)
+### Docker Install
 
 ```bash
 # Start all services
@@ -101,254 +37,455 @@ docker-compose up -d
 
 # Check status
 docker-compose ps
-
-# View logs
-docker-compose logs -f agentic-ai
 ```
 
-**Services Started:**
-| Service | Port | URL |
-|---------|------|-----|
-| Agentic AI API | 5000 | http://localhost:5000 |
-| Redis | 6379 | localhost:6379 |
-| Ollama (LLM) | 11434 | http://localhost:11434 |
-| Prometheus | 9090 | http://localhost:9090 |
-| Grafana | 3000 | http://localhost:3000 |
+## Configuration
 
----
+### Environment Variables
 
-## Step 5: Test API Endpoints
-
-### Health Check
+Create `.env` file:
 
 ```bash
-curl http://localhost:5000/health
+# Redis
+REDIS_URL=redis://localhost:6379
+
+# Database (optional, defaults to SQLite)
+DATABASE_URL=sqlite:///agentic_ai.db
+# or
+DATABASE_URL=postgresql://user:pass@localhost:5432/agentic_ai
+
+# API Server
+API_HOST=0.0.0.0
+API_PORT=8000
+
+# Security
+SECRET_KEY=your-secret-key-here
+JWT_EXPIRY=3600
+
+# Logging
+LOG_LEVEL=INFO
 ```
 
-**Response:**
-```json
-{
-  "status": "healthy",
-  "version": "0.7.0",
-  "environment": "development",
-  "timestamp": "2026-04-16T01:00:00"
-}
-```
-
-### Create Workspace
-
-```bash
-curl -X POST http://localhost:5000/api/v1/workspaces \
-  -H "Content-Type: application/json" \
-  -d '{"name": "My Workspace", "creator_id": "alice"}'
-```
-
-### Create Session
-
-```bash
-curl -X POST http://localhost:5000/api/v1/sessions \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Team Meeting", "creator_id": "alice"}'
-```
-
-### Get Online Users
-
-```bash
-curl http://localhost:5000/api/v1/presence
-```
-
----
-
-## Step 6: Run Benchmarks
-
-```bash
-python benchmarks/performance_test.py
-```
-
-**Expected results:**
-- Real-time ops: ~570 ops/sec
-- Workspace ops: ~60,000 ops/sec
-- Session scaling: ~58,000 ops/sec
-- Presence tracking: ~64,000 ops/sec
-
----
-
-## Step 7: Explore the Code
-
-### Key Modules
+### Default Configuration
 
 ```python
-# Import agents
-from agentic_ai.agents.developer import DeveloperAgent
-from agentic_ai.agents.lead import LeadAgent
-
-# Import collaboration
-from agentic_ai.collaboration.workspace import Workspace
-from agentic_ai.collaboration.sessions import SessionManager
-from agentic_ai.collaboration.realtime import RealTimeCollaboration
-
-# Import monitoring
-from agentic_ai.monitoring.metrics import MetricsRegistry
-from agentic_ai.monitoring.dashboard import Dashboard
+# config.py
+REDIS_URL = "redis://localhost:6379"
+DATABASE_URL = "sqlite:///agentic_ai.db"
+LOG_LEVEL = "INFO"
 ```
 
-### Create Your First Agent
+## Quick Start
+
+### 1. Start Redis
+
+```bash
+# Docker
+docker run -d -p 6379:6379 redis:7
+
+# Or native
+redis-server
+```
+
+### 2. Verify Installation
+
+```bash
+# Run health check
+python -m agentic_ai.cli doctor
+
+# Or use CLI
+agenticai doctor
+```
+
+Expected output:
+```
+┌─────────────────────────────────────┐
+│ Agentic AI Health Check             │
+└─────────────────────────────────────┘
+✓ Python Version: 3.11.5
+✓ Agents Loaded: 33+
+✓ Message Bus: Ready
+✓ Task Queue: Ready
+✓ Redis Connection: localhost:6379
+✓ All checks passed!
+```
+
+### 3. Run Your First Agent
 
 ```python
 from agentic_ai.agents.developer import DeveloperAgent
-from agentic_ai.infrastructure.state_store import StateStore
 
-# Initialize
-state = StateStore()
-agent = DeveloperAgent(agent_id="my-agent", state_store=state)
+# Create agent
+agent = DeveloperAgent("dev-1")
 
-# Execute a task
-result = agent.execute_task("Write a function to calculate fibonacci")
-print(result.output)
+# Execute capability
+result = agent.execute(
+    action="implement",
+    params={
+        "spec": "Create a function to calculate fibonacci numbers",
+        "language": "python",
+    },
+)
+
+print(result)
 ```
 
-### Create a Collaboration Session
+### 4. Use the CLI
+
+```bash
+# Check system status
+agenticai status
+
+# List all agents
+agenticai agent list
+
+# Create chaos experiment
+agenticai chaos experiment create \
+  --name "Test Experiment" \
+  --type instance_termination \
+  --severity medium \
+  --duration 15
+
+# List vendors
+agenticai vendor list
+
+# Create audit
+agenticai audit create \
+  --title "SOC2 Audit" \
+  --type it_general \
+  --auditor "auditor@example.com"
+```
+
+### 5. Start the API Server
+
+```bash
+# Run server
+python -m agentic_ai.server
+
+# Or with uvicorn
+uvicorn agentic_ai.server:app --reload
+```
+
+Access API at: http://localhost:8000
+
+API docs: http://localhost:8000/docs
+
+### 6. Access the Dashboard
+
+```bash
+# Build dashboard
+cd dashboard
+npm install
+npm run build
+
+# Or development mode
+npm run dev
+```
+
+Access dashboard at: http://localhost:5173
+
+## Core Concepts
+
+### Agents
+
+Agents are autonomous units with specific capabilities:
 
 ```python
-from agentic_ai.collaboration.sessions import SessionManager
-from agentic_ai.collaboration.workspace import Workspace
+from agentic_ai.agents.security import SecurityAgent
 
-# Create session manager
-manager = SessionManager()
+agent = SecurityAgent("security-1")
 
-# Create session
-session = manager.create_session("My Session", creator_id="alice")
-session.start()
+# Get available capabilities
+capabilities = agent.get_capabilities()
 
-# Participants join
-session.join(user_id="alice", name="Alice")
-session.join(user_id="bob", name="Bob")
-
-# Create workspace
-workspace = Workspace(name="Shared Workspace")
-workspace.add_participant("alice", is_owner=True)
-workspace.add_participant("bob")
-
-# Create shared document
-doc = workspace.create_resource(
-    name="Notes",
-    resource_type="document",
-    content="Meeting notes here",
-    creator_id="alice",
+# Execute capability
+result = agent.execute(
+    action="scan_vulnerabilities",
+    params={"target": "192.168.1.1", "scan_type": "full"},
 )
 ```
 
----
+### Messages
 
-## Step 8: Deploy to Production
+Agents communicate via messages:
+
+```python
+from agentic_ai.messaging import MessageBus, Message
+
+bus = MessageBus()
+bus.connect()
+
+# Publish message
+bus.publish(Message(
+    message_id="msg-1",
+    message_type=MessageType.EVENT,
+    topic="agent.security",
+    payload={"action": "scan", "target": "192.168.1.1"},
+))
+
+# Subscribe to topic
+def handler(message):
+    print(f"Received: {message.payload}")
+
+bus.subscribe("agent.security", handler)
+```
+
+### Events
+
+Events are published to the event bus:
+
+```python
+from agentic_ai.messaging import EventBus, Event, EventPriority
+from agentic_ai.messaging.event_bus import on_event
+
+bus = EventBus()
+bus.connect()
+
+# Emit event
+bus.emit(
+    event_type="security.incident",
+    data={"incident_id": "123", "severity": "high"},
+    source="soc-agent",
+    priority=EventPriority.HIGH,
+)
+
+# Handle event
+@on_event('security.incident')
+def handle_incident(event: Event):
+    print(f"Incident: {event.data}")
+```
+
+### Tasks
+
+Tasks are queued for async processing:
+
+```python
+from agentic_ai.messaging import TaskQueue
+
+queue = TaskQueue()
+
+# Register handler
+@queue.register_handler('email.send')
+def send_email(payload):
+    # Send email logic
+    return True
+
+# Enqueue task
+task = queue.enqueue(
+    task_type='email.send',
+    payload={'to': 'user@example.com', 'subject': 'Test'},
+    priority=8,
+)
+
+# Run worker
+queue.run_worker(queue_names=['default'])
+```
+
+## Common Workflows
+
+### Multi-Agent Collaboration
+
+```python
+from agentic_ai.agents.lead import LeadAgent
+from agentic_ai.agents.developer import DeveloperAgent
+from agentic_ai.agents.qa import QAAgent
+
+lead = LeadAgent("lead-1")
+dev = DeveloperAgent("dev-1")
+qa = QAAgent("qa-1")
+
+# Orchestrate workflow
+result = lead.orchestrate(
+    task="Implement user login feature",
+    agents=[dev, qa],
+    workflow=[
+        {"agent": dev, "action": "implement", "params": {"spec": "..."}},
+        {"agent": dev, "action": "review", "params": {"code": "..."}},
+        {"agent": qa, "action": "generate_tests", "params": {"code": "..."}},
+        {"agent": qa, "action": "run_tests", "params": {}},
+    ],
+)
+```
+
+### Chaos Engineering
+
+```python
+from agentic_ai.agents.chaos_monkey import ChaosMonkeyAgent, ExperimentType
+
+agent = ChaosMonkeyAgent()
+
+# Create experiment
+experiment = agent.create_experiment(
+    name="AZ Failure Test",
+    description="Test resilience to AZ failure",
+    experiment_type=ExperimentType.AZ_FAILURE,
+    severity=SeverityLevel.HIGH,
+    blast_radius=BlastRadius.LIMITED,
+    duration_minutes=30,
+)
+
+# Start experiment
+run = agent.start_experiment(experiment.experiment_id)
+
+# Monitor
+status = agent.get_experiment_status(experiment.experiment_id)
+```
+
+### Vendor Risk Assessment
+
+```python
+from agentic_ai.agents.vendor_risk import VendorRiskAgent, VendorTier
+
+agent = VendorRiskAgent()
+
+# Add vendor
+vendor = agent.add_vendor(
+    name="CloudProvider Inc",
+    legal_name="CloudProvider Inc.",
+    tier=VendorTier.TIER_1,
+    category="cloud",
+    relationship_type="vendor",
+)
+
+# Create assessment
+assessment = agent.create_assessment(
+    vendor_id=vendor.vendor_id,
+    assessment_type=AssessmentType.INITIAL,
+    assessor="security-team",
+)
+
+# Get risk report
+report = agent.get_vendor_risk_report(vendor.vendor_id)
+```
+
+## Testing
+
+### Run Tests
+
+```bash
+# All tests
+pytest
+
+# Specific test file
+pytest tests/test_developer_agent.py
+
+# With coverage
+pytest --cov=agentic_ai
+
+# Integration tests
+pytest tests/integration/
+```
+
+### Write Tests
+
+```python
+# tests/test_my_agent.py
+import pytest
+from agentic_ai.agents.base import BaseAgent
+
+def test_agent_initialization():
+    agent = BaseAgent("test-1")
+    assert agent.agent_id == "test-1"
+    assert agent.get_state() is not None
+
+def test_agent_capability():
+    agent = BaseAgent("test-1")
+    capabilities = agent.get_capabilities()
+    assert len(capabilities) > 0
+```
+
+## Deployment
 
 ### Docker
 
 ```bash
-# Build production image
+# Build image
 docker build -t agentic-ai:latest .
 
 # Run container
-docker run -d -p 5000:5000 -p 8000:8000 \
-  -e REDIS_HOST=redis \
-  -e DATABASE_URL=sqlite:///app/data/agentic.db \
+docker run -d \
+  -p 8000:8000 \
+  -e REDIS_URL=redis://redis:6379 \
+  --name agentic-ai \
   agentic-ai:latest
 ```
 
 ### Kubernetes
 
 ```bash
-# Apply manifests
-kubectl apply -f kubernetes/
+# Deploy to Kubernetes
+kubectl apply -f kubernetes/namespace.yaml
+kubectl apply -f kubernetes/configmap.yaml
+kubectl apply -f kubernetes/deployment.yaml
+kubectl apply -f kubernetes/service.yaml
 
-# Check deployment
+# Check status
 kubectl get pods -n agentic-ai
+```
+
+### Docker Compose
+
+```bash
+# Start all services
+docker-compose up -d
 
 # View logs
-kubectl logs -f deployment/agentic-ai -n agentic-ai
-```
+docker-compose logs -f
 
-### Automated Deploy
-
-```bash
-./deploy.sh prod
-```
-
----
-
-## Common Issues
-
-### Issue: Tests Failing
-
-```bash
-# Ensure you're in the right directory
-cd ~/stsgym-work/agentic_ai
-
-# Ensure virtual environment is activated
-source venv/bin/activate
-
-# Run with verbose output
-pytest tests/ -v --tb=long
-```
-
-### Issue: Docker Compose Fails
-
-```bash
-# Check Docker is running
-docker ps
-
-# Check ports aren't in use
-lsof -i :5000
-lsof -i :6379
-
-# Rebuild containers
+# Stop all
 docker-compose down
-docker-compose up -d --build
 ```
 
-### Issue: Module Not Found
+## Troubleshooting
+
+### Redis Connection Issues
 
 ```bash
-# Ensure you're running from project root
-cd ~/stsgym-work/agentic_ai
+# Check Redis is running
+redis-cli ping
+# Should return: PONG
 
-# Set PYTHONPATH
-export PYTHONPATH=.
-
-# Or install in editable mode
-pip install -e .
+# Check connection from Python
+python -c "import redis; r = redis.Redis(); print(r.ping())"
 ```
 
----
+### Agent Not Responding
+
+```python
+# Check agent state
+agent = DeveloperAgent("dev-1")
+print(agent.get_state())
+
+# Check logs
+import logging
+logging.basicConfig(level=logging.DEBUG)
+```
+
+### Task Queue Issues
+
+```bash
+# Check Redis queues
+redis-cli
+> KEYS task:*
+> LLEN task:queue:default
+```
 
 ## Next Steps
 
-1. **Read the docs:**
-   - [DEPLOYMENT.md](DEPLOYMENT.md) - Full deployment guide
-   - [PHASE7_MULTIPLAYER.md](../PHASE7_MULTIPLAYER.md) - Collaboration features
+- Read [ARCHITECTURE.md](ARCHITECTURE.md) for system design
+- Check [AGENT_MATRIX.md](AGENT_MATRIX.md) for all agent capabilities
+- See [examples/](../examples/) for usage examples
+- Review [DEPLOYMENT.md](DEPLOYMENT.md) for production deployment
+- Join [Discord](https://discord.com/invite/clawd) for community support
 
-2. **Customize agents:**
-   - Create your own agent types
-   - Extend existing agents with new capabilities
+## Resources
 
-3. **Integrate with your stack:**
-   - Connect to your LLM provider
-   - Add custom metrics to Prometheus
-   - Create custom Grafana dashboards
-
-4. **Join the community:**
-   - Discord: https://discord.com/invite/clawd
-   - Documentation: https://docs.openclaw.ai
+- **Documentation**: https://github.com/wezzels/agentic-ai/tree/main/docs
+- **Examples**: https://github.com/wezzels/agentic-ai/tree/main/examples
+- **API Reference**: http://localhost:8000/docs (when server running)
+- **Issues**: https://github.com/wezzels/agentic-ai/issues
+- **Discussions**: https://github.com/wezzels/agentic-ai/discussions
 
 ---
 
-## Need Help?
-
-- **Documentation:** See `docs/` folder
-- **Examples:** See `examples/` folder
-- **Tests:** See `tests/` folder for usage patterns
-- **Issues:** https://github.com/openclaw/openclaw/issues
-
----
-
-**Happy Building! 🚀**
+*Last updated: April 16, 2026*
