@@ -42,10 +42,10 @@ COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy application code
-COPY --chown=agentic:agentic agentic_ai/ ./agentic_ai/
-COPY --chown=agentic:agentic tests/ ./tests/
-COPY --chown=agentic:agentic README.md .
-COPY --chown=agentic:agentic pytest.ini .
+COPY --chown=agentic:agentic . .
+
+# Install as package
+RUN pip install -e .
 
 # Create directories for data
 RUN mkdir -p /app/data /app/logs /app/config && \

@@ -1,6 +1,6 @@
 import React from 'react';
 import { FileCheck, CheckCircle, AlertCircle, Clock, FileText } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const auditEngagements = [
   { id: 1, title: 'SOC2 Type II Audit 2026', type: 'IT General', status: 'In Progress', progress: 65, auditor: 'external-auditor@auditfirm.com', startDate: '2026-04-01' },
