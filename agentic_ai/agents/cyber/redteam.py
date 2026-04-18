@@ -104,9 +104,9 @@ class Finding:
     title: str
     description: str
     severity: FindingSeverity
-    cvss_score: Optional[float] = None
     engagement_id: str
     target_id: Optional[str] = None
+    cvss_score: Optional[float] = None
     category: str = ""  # initial_access, execution, persistence, etc.
     mitre_attack: List[str] = field(default_factory=list)
     evidence: List[str] = field(default_factory=list)
@@ -122,11 +122,11 @@ class Credential:
     """Discovered credential."""
     credential_id: str
     username: str
+    source: str  # mimikatz, keylogger, phishing, etc.
+    engagement_id: str
     password: Optional[str] = None
     hash: Optional[str] = None
-    source: str  # mimikatz, keylogger, phishing, etc.
     target_id: Optional[str] = None
-    engagement_id: str
     valid: bool = True
     tested_at: Optional[datetime] = None
     privileges: List[str] = field(default_factory=list)
@@ -654,6 +654,224 @@ class RedTeamAgent:
             'credentials_count': len(self.credentials),
             'attack_paths_count': len(self.attack_paths),
         }
+    
+    # ============================================
+    # KaliAgent Integration
+    # ============================================
+    
+    def execute_kali_recon(
+        self,
+        engagement_id: str,
+        target: str,
+        domain: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Execute reconnaissance using KaliAgent.
+        
+        Integrates with KaliAgent to run automated recon playbook
+        and stores results in engagement.
+        """
+        try:
+            from agentic_ai.agents.cyber.kali import KaliAgent, AuthorizationLevel
+            
+            # Initialize KaliAgent
+            kali = KaliAgent()
+            kali.set_authorization(AuthorizationLevel.BASIC)
+            
+            # Run recon playbook
+            results = kali.run_recon_playbook(
+                target=target,
+                domain=domain,
+            )
+            
+            # Process results and add to engagement
+            findings_added = 0
+            services_added = 0
+            
+            if "nmap" in results and results["nmap"].exit_code == 0:
+                # Parse nmap output for services
+                for line in results["nmap"].stdout.split("\n"):
+                    if "open" in line:
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            port = parts[0].replace("/tcp", "")
+                            service = parts[1] if len(parts) > 1 else "unknown"
+                            self.add_service_to_target(
+                                target_id=target,
+                                engagement_id=engagement_id,
+                                port=int(port),
+                                protocol="tcp",
+                                service=service,
+                            )
+                            services_added += 1
+            
+            # Generate report
+            report = kali.generate_playbook_report(
+                playbook_name="recon",
+                results=results,
+            )
+            
+            return {
+                "success": True,
+                "engagement_id": engagement_id,
+                "target": target,
+                "services_discovered": services_added,
+                "findings_added": findings_added,
+                "tools_executed": list(results.keys()),
+                "report": report,
+            }
+            
+        except ImportError:
+            return {"success": False, "error": "KaliAgent not available"}
+        except Exception as e:
+            logger.error(f"Kali recon failed: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def execute_kali_web_audit(
+        self,
+        engagement_id: str,
+        url: str,
+        target: str,
+    ) -> Dict[str, Any]:
+        """Execute web application audit using KaliAgent."""
+        try:
+            from agentic_ai.agents.cyber.kali import KaliAgent, AuthorizationLevel
+            
+            kali = KaliAgent()
+            kali.set_authorization(AuthorizationLevel.ADVANCED)
+            
+            results = kali.run_web_audit_playbook(
+                url=url,
+                target=target,
+            )
+            
+            # Add findings from results
+            findings_added = 0
+            for tool_name, result in results.items():
+                if result.exit_code == 0 and result.stdout:
+                    # Parse output for vulnerabilities
+                    if "vulnerabilit" in result.stdout.lower() or "injection" in result.stdout.lower():
+                        self.add_finding(
+                            engagement_id=engagement_id,
+                            title=f"{tool_name} - Vulnerability Detected",
+                            description=result.stdout[:500],
+                            severity=FindingSeverity.HIGH,
+                            target_id=target,
+                            category="web_application",
+                        )
+                        findings_added += 1
+            
+            report = kali.generate_playbook_report(
+                playbook_name="web_audit",
+                results=results,
+            )
+            
+            return {
+                "success": True,
+                "engagement_id": engagement_id,
+                "url": url,
+                "findings_added": findings_added,
+                "tools_executed": list(results.keys()),
+                "report": report,
+            }
+            
+        except ImportError:
+            return {"success": False, "error": "KaliAgent not available"}
+        except Exception as e:
+            logger.error(f"Kali web audit failed: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def execute_kali_password_audit(
+        self,
+        engagement_id: str,
+        hash_file: str,
+        wordlist: str = "/usr/share/wordlists/rockyou.txt",
+    ) -> Dict[str, Any]:
+        """Execute password cracking audit using KaliAgent."""
+        try:
+            from agentic_ai.agents.cyber.kali import KaliAgent, AuthorizationLevel
+            
+            kali = KaliAgent()
+            kali.set_authorization(AuthorizationLevel.ADVANCED)
+            
+            results = kali.run_password_audit_playbook(
+                hash_file=hash_file,
+                wordlist=wordlist,
+            )
+            
+            # Extract cracked credentials
+            creds_added = 0
+            for tool_name, result in results.items():
+                if result.exit_code == 0:
+                    # Parse cracked passwords from output
+                    for line in result.stdout.split("\n"):
+                        if ":" in line and not line.startswith("#"):
+                            parts = line.split(":")
+                            if len(parts) >= 2:
+                                self.add_credential(
+                                    engagement_id=engagement_id,
+                                    username=parts[0],
+                                    password=parts[1] if len(parts) > 1 else None,
+                                    source=tool_name,
+                                )
+                                creds_added += 1
+            
+            report = kali.generate_playbook_report(
+                playbook_name="password_audit",
+                results=results,
+            )
+            
+            return {
+                "success": True,
+                "engagement_id": engagement_id,
+                "credentials_cracked": creds_added,
+                "tools_executed": list(results.keys()),
+                "report": report,
+            }
+            
+        except ImportError:
+            return {"success": False, "error": "KaliAgent not available"}
+        except Exception as e:
+            logger.error(f"Kali password audit failed: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def execute_kali_full_engagement(
+        self,
+        engagement_id: str,
+        targets: List[str],
+        domains: Optional[Dict[str, str]] = None,
+    ) -> Dict[str, Any]:
+        """Execute full engagement using KaliAgent playbooks.
+        
+        Runs complete engagement: recon → web audit → password audit → report
+        """
+        results = {
+            "engagement_id": engagement_id,
+            "phase_results": [],
+            "total_findings": 0,
+            "total_credentials": 0,
+            "total_services": 0,
+        }
+        
+        # Phase 1: Reconnaissance
+        for target in targets:
+            domain = domains.get(target) if domains else None
+            recon_result = self.execute_kali_recon(
+                engagement_id=engagement_id,
+                target=target,
+                domain=domain,
+            )
+            results["phase_results"].append({"phase": "recon", "target": target, **recon_result})
+            if recon_result.get("success"):
+                results["total_services"] += recon_result.get("services_discovered", 0)
+        
+        # Phase 2: Web audits (if web targets)
+        # Phase 3: Password audits (if hashes found)
+        # Phase 4: Generate final report
+        
+        final_report = self.generate_engagement_report(engagement_id)
+        results["final_report"] = final_report
+        
+        return results
 
 
 def get_capabilities() -> Dict[str, Any]:
