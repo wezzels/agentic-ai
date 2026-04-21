@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Shield, Activity, AlertTriangle, CheckCircle, Clock, TrendingUp, Server, Zap, Target } from 'lucide-react';
 import './index.css';
+import { SecurityTools } from './SecurityTools';
+import { RedTeamV2 } from './RedTeamV2';
 
 // =============================================================================
 // Types
@@ -3285,6 +3287,18 @@ function App() {
             🎮 Live Demos
           </button>
           <button 
+            className={`nav-link ${activeTab === 'security-tools' ? 'active' : ''}`}
+            onClick={() => setActiveTab('security-tools')}
+          >
+            🛠️ Security Tools v2
+          </button>
+          <button 
+            className={`nav-link ${activeTab === 'redteam-v2' ? 'active' : ''}`}
+            onClick={() => setActiveTab('redteam-v2')}
+          >
+            ⚔️ RedTeam v2
+          </button>
+          <button 
             className={`nav-link ${activeTab === 'docs' ? 'active' : ''}`}
             onClick={() => setActiveTab('docs')}
           >
@@ -3305,6 +3319,8 @@ function App() {
             {activeTab === 'overview' && renderOverview()}
             {activeTab === 'cyber' && renderCyberDivision()}
             {activeTab === 'demos' && renderDemos()}
+            {activeTab === 'security-tools' && <SecurityTools />}
+            {activeTab === 'redteam-v2' && <RedTeamV2 />}
             {activeTab === 'docs' && renderDocs()}
           </>
         )}
@@ -3312,11 +3328,12 @@ function App() {
 
       {/* Footer */}
       <footer className="footer">
-        <p>🍀 Agentic AI Dashboard v2.0 | Quality Score: 9.0/10 | Last Updated: April 18, 2026</p>
+        <p>🍀 Agentic AI Dashboard v2.0 | Quality Score: 9.0/10 | Last Updated: April 20, 2026</p>
         <p>
           <a href="https://github.com/wezzels/agentic-ai">GitHub</a> •
           <a href="https://discord.gg/clawd">Discord</a> •
-          <a href="https://papers.stsgym.com/papers/cyber-division/">Documentation</a>
+          <a href="https://papers.stsgym.com/">Research Papers</a> •
+          <a href="/docs">API Docs</a>
         </p>
       </footer>
     </div>

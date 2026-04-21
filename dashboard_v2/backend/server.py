@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 import asyncio
 import json
 import random
@@ -34,6 +34,29 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Import v2 agents
+try:
+    # Try local import first (for deployed server)
+    import sys
+    sys.path.insert(0, '/opt/agentic-dashboard/dashboard_v2/backend')
+    from kali_v2 import KaliAgentV2
+    from redteam_v2 import RedTeamAgentV2
+    KALI_V2_AVAILABLE = True
+    REDTEAM_V2_AVAILABLE = True
+except ImportError:
+    try:
+        from agentic_ai.agents.cyber import KaliAgentV2, RedTeamAgentV2
+        KALI_V2_AVAILABLE = True
+        REDTEAM_V2_AVAILABLE = True
+    except ImportError:
+        KALI_V2_AVAILABLE = False
+        REDTEAM_V2_AVAILABLE = False
+        print("Warning: v2 agents not available")
+
+# Initialize v2 agents
+kali_v2 = KaliAgentV2() if KALI_V2_AVAILABLE else None
+redteam_v2 = RedTeamAgentV2() if REDTEAM_V2_AVAILABLE else None
 
 # =============================================================================
 # Data Models
@@ -438,6 +461,241 @@ async def update_agent_metrics():
 async def startup_event():
     """Start background tasks on server startup"""
     asyncio.create_task(update_agent_metrics())
+
+# =============================================================================
+# KaliAgent v2 API Endpoints
+# =============================================================================
+
+class CVEMatchRequest(BaseModel):
+    cve_id: str
+
+class ToolRecommendationRequest(BaseModel):
+    target_type: str
+    os: Optional[str] = None
+    services: Optional[List[Dict[str, Any]]] = None
+
+class RemediationRequest(BaseModel):
+    findings: List[Dict[str, str]]
+
+@app.get("/api/v2/kali/state")
+async def get_kali_v2_state():
+    """Get KaliAgent v2 state and capabilities"""
+    if not kali_v2:
+        raise HTTPException(status_code=503, detail="KaliAgent v2 not available")
+    return kali_v2.get_state()
+
+@app.post("/api/v2/kali/cve/match")
+async def match_cve_exploit(request: CVEMatchRequest):
+    """Match CVE to exploit automatically"""
+    if not kali_v2:
+        raise HTTPException(status_code=503, detail="KaliAgent v2 not available")
+    
+    result = kali_v2.match_exploits_for_cve(request.cve_id)
+    if not result:
+        return {"cve": request.cve_id, "found": False, "exploit": None}
+    
+    return {
+        "cve": request.cve_id,
+        "found": True,
+        "exploit": result
+    }
+
+@app.post("/api/v2/kali/tools/recommend")
+async def recommend_tools(request: ToolRecommendationRequest):
+    """Get AI-powered tool recommendations for target"""
+    if not kali_v2:
+        raise HTTPException(status_code=503, detail="KaliAgent v2 not available")
+    
+    target_info = {
+        "type": request.target_type,
+        "os": request.os,
+        "services": request.services or [],
+    }
+    
+    recommendations = kali_v2.recommend_tools_for_target(target_info)
+    return {
+        "target": target_info,
+        "recommendations": recommendations,
+        "count": len(recommendations)
+    }
+
+@app.post("/api/v2/kali/remediation/plan")
+async def generate_remediation_plan(request: RemediationRequest):
+    """Generate automatic remediation plan"""
+    if not kali_v2:
+        raise HTTPException(status_code=503, detail="KaliAgent v2 not available")
+    
+    plan = kali_v2.generate_remediation_plan(request.findings)
+    return plan
+
+@app.get("/api/v2/kali/tools")
+async def list_kali_tools(category: Optional[str] = None):
+    """List available Kali tools, optionally filtered by category"""
+    if not kali_v2:
+        raise HTTPException(status_code=503, detail="KaliAgent v2 not available")
+    
+    from agentic_ai.agents.cyber.kali_v2 import ToolCategory
+    
+    if category:
+        try:
+            cat = ToolCategory(category)
+            tools = kali_v2.list_tools(cat)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid category: {category}")
+    else:
+        tools = kali_v2.list_tools()
+    
+    return {"tools": tools, "count": len(tools)}
+
+# =============================================================================
+# RedTeam Agent v2 API Endpoints
+# =============================================================================
+
+class MITREQuery(BaseModel):
+    technique_id: Optional[str] = None
+    tactic: Optional[str] = None
+
+class EngagementRiskRequest(BaseModel):
+    engagement_id: str
+    findings: Optional[List[Dict[str, Any]]] = None
+
+class AttackPathRequest(BaseModel):
+    engagement_id: str
+    findings: Optional[List[Dict[str, Any]]] = None
+
+class DetectionTestRequest(BaseModel):
+    engagement_id: str
+    technique_id: str
+    test_type: str = "atomic"
+
+@app.get("/api/v2/redteam/state")
+async def get_redteam_v2_state():
+    """Get RedTeam Agent v2 state and capabilities"""
+    if not redteam_v2:
+        raise HTTPException(status_code=503, detail="RedTeam Agent v2 not available")
+    return redteam_v2.get_state()
+
+@app.get("/api/v2/redteam/mitre")
+async def get_mitre_techniques(query: MITREQuery = None):
+    """Get MITRE ATT&CK techniques"""
+    if not redteam_v2:
+        raise HTTPException(status_code=503, detail="RedTeam Agent v2 not available")
+    
+    if query.technique_id:
+        tech = redteam_v2.get_technique(query.technique_id)
+        if not tech:
+            raise HTTPException(status_code=404, detail=f"Technique {query.technique_id} not found")
+        return tech
+    
+    if query.tactic:
+        techniques = redteam_v2.get_techniques_by_tactic(query.tactic)
+        return {"tactic": query.tactic, "techniques": techniques, "count": len(techniques)}
+    
+    # Return all techniques
+    return {
+        "techniques": list(redteam_v2.mitre_techniques.values()),
+        "count": len(redteam_v2.mitre_techniques)
+    }
+
+@app.post("/api/v2/redteam/mitre/map")
+async def map_finding_to_mitre(finding: Dict[str, str]):
+    """Map a finding to MITRE ATT&CK techniques"""
+    if not redteam_v2:
+        raise HTTPException(status_code=503, detail="RedTeam Agent v2 not available")
+    
+    techniques = redteam_v2.map_finding_to_mitre(finding)
+    return {
+        "finding": finding,
+        "mitre_techniques": techniques,
+        "count": len(techniques)
+    }
+
+@app.post("/api/v2/redteam/risk")
+async def calculate_engagement_risk(request: EngagementRiskRequest):
+    """Calculate risk score for an engagement"""
+    if not redteam_v2:
+        raise HTTPException(status_code=503, detail="RedTeam Agent v2 not available")
+    
+    # Add findings temporarily
+    if request.findings:
+        for i, finding in enumerate(request.findings):
+            redteam_v2.findings[f"temp_{i}"] = {
+                "engagement_id": request.engagement_id,
+                **finding
+            }
+    
+    risk = redteam_v2.calculate_engagement_risk(request.engagement_id)
+    
+    # Cleanup temp findings
+    if request.findings:
+        for i in range(len(request.findings)):
+            redteam_v2.findings.pop(f"temp_{i}", None)
+    
+    return {
+        "engagement_id": request.engagement_id,
+        "risk_score": risk.overall_risk_score,
+        "risk_level": risk.risk_level,
+        "risk_factors": risk.risk_factors,
+        "findings_by_severity": risk.findings_by_severity,
+        "mitre_coverage": risk.mitre_coverage,
+    }
+
+@app.post("/api/v2/redteam/attack-paths")
+async def generate_attack_paths(request: AttackPathRequest):
+    """Generate attack paths from findings"""
+    if not redteam_v2:
+        raise HTTPException(status_code=503, detail="RedTeam Agent v2 not available")
+    
+    # Add findings temporarily
+    if request.findings:
+        for i, finding in enumerate(request.findings):
+            redteam_v2.findings[f"temp_{i}"] = {
+                "engagement_id": request.engagement_id,
+                **finding
+            }
+    
+    paths = redteam_v2.generate_attack_path_from_findings(request.engagement_id)
+    
+    # Cleanup temp findings
+    if request.findings:
+        for i in range(len(request.findings)):
+            redteam_v2.findings.pop(f"temp_{i}", None)
+    
+    return {
+        "engagement_id": request.engagement_id,
+        "attack_paths": paths,
+        "count": len(paths)
+    }
+
+@app.post("/api/v2/redteam/detection-tests")
+async def create_detection_test(request: DetectionTestRequest):
+    """Create a purple team detection test"""
+    if not redteam_v2:
+        raise HTTPException(status_code=503, detail="RedTeam Agent v2 not available")
+    
+    test = redteam_v2.create_detection_test(
+        technique_id=request.technique_id,
+        engagement_id=request.engagement_id,
+        test_type=request.test_type,
+    )
+    
+    return {
+        "test_id": test.test_id,
+        "technique_id": test.technique_id,
+        "technique_name": test.technique_name,
+        "engagement_id": test.engagement_id,
+        "test_type": test.test_type,
+        "status": test.status,
+    }
+
+@app.get("/api/v2/redteam/executive-summary/{engagement_id}")
+async def get_executive_summary(engagement_id: str):
+    """Generate executive summary for engagement"""
+    if not redteam_v2:
+        raise HTTPException(status_code=503, detail="RedTeam Agent v2 not available")
+    
+    summary = redteam_v2.generate_executive_summary(engagement_id)
+    return summary
 
 # =============================================================================
 # Main Entry Point
